@@ -1,0 +1,19 @@
+[build]
+  command = "pnpm run build"
+  publish = "artifacts/maya-perfume-shop/dist/public"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["express", "pg", "@google-cloud/storage", "google-auth-library"]
+
+[dev]
+  command = "pnpm --filter @workspace/maya-perfume-shop dev"
+  targetPort = 22746
+  port = 8889
+  framework = "#custom"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

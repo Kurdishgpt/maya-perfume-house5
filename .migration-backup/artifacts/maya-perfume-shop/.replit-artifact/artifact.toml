@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Maya Collection"
+description = "A five-page perfume boutique website for Maya Collection, with fragrance collections, ingredient stories, brand information, and contact details."
+version = "1.0.0"
+id = "artifacts/maya-perfume-shop"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22746
+
+[services.development]
+run = "pnpm --filter @workspace/maya-perfume-shop run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/maya-perfume-shop", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/maya-perfume-shop/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22746"
+BASE_PATH = "/"

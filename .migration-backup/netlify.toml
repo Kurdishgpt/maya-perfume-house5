@@ -1,0 +1,30 @@
+[build]
+base = "."
+command = "pnpm run typecheck:libs && pnpm --filter @workspace/api-server run typecheck && PORT=22746 BASE_PATH=/ pnpm --filter @workspace/maya-perfume-shop run build"
+publish = "artifacts/maya-perfume-shop/dist/public"
+functions = "artifacts/api-server/netlify/functions"
+
+[build.environment]
+NODE_VERSION = "22"
+PORT = "22746"
+BASE_PATH = "/"
+
+[functions]
+node_bundler = "esbuild"
+
+[[redirects]]
+from = "/api"
+to = "/.netlify/functions/api/api"
+status = 200
+force = true
+
+[[redirects]]
+from = "/api/*"
+to = "/.netlify/functions/api/api/:splat"
+status = 200
+force = true
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200

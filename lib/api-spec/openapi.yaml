@@ -1,0 +1,1264 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: products
+    description: Public storefront catalog and protected catalog management.
+  - name: admin
+    description: Administrator access.
+  - name: fragrance-ai
+    description: Server-side fragrance data suggestions.
+  - name: storage
+    description: Product image uploads and delivery.
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /admin/passcode:
+    get:
+      operationId: getAdminPasscodeStatus
+      tags: [admin]
+      summary: Check whether the administrator passcode is unlocked
+      responses:
+        "200":
+          description: Passcode unlock status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPasscodeStatus"
+    post:
+      operationId: unlockAdminPasscode
+      tags: [admin]
+      summary: Verify the administrator passcode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPasscodeInput"
+      responses:
+        "200":
+          description: Passcode accepted and a short-lived unlock cookie was set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPasscodeStatus"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Passcode was not accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many passcode attempts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Passcode verification is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: lockAdminPasscode
+      tags: [admin]
+      summary: Clear the administrator passcode unlock
+      responses:
+        "204":
+          description: The passcode unlock was cleared.
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List the live storefront catalog
+      responses:
+        "200":
+          description: Products ordered by creation date.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a catalog product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Product created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid product data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Sign-in required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Administrator access required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: SKU already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /products/{id}:
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a catalog product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Product updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid product data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Sign-in required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Administrator access required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: SKU already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a catalog product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: Product deleted.
+        "401":
+          description: Sign-in required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Administrator access required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /search-fragrance-images:
+    post:
+      operationId: searchFragranceImages
+      tags: [fragrance-ai]
+      summary: Search Brave for perfume photographs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutofillFragranceInput"
+      responses:
+        "200":
+          description: Image candidates with source pages for merchant review.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FragranceImageSearch"
+        "400":
+          description: Invalid search query.
+        "403":
+          description: Administrator access required.
+        "429":
+          description: Search rate limit reached.
+        "502":
+          description: Image search is unavailable.
+  /autofill-fragrance:
+    post:
+      operationId: autofillFragrance
+      tags: [fragrance-ai]
+      summary: Generate editable fragrance product suggestions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutofillFragranceInput"
+      responses:
+        "200":
+          description: Suggested fragrance information.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FragranceSuggestion"
+        "400":
+          description: Invalid fragrance name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Sign-in required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Administrator access required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: AI request limit reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "502":
+          description: The AI provider returned an invalid response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: AI service is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for a product image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Invalid image metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Sign-in required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Administrator access required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getStorageObject
+      tags: [storage]
+      summary: Serve a product image
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Image bytes.
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Image not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /orders:
+    post:
+      operationId: createStoreOrder
+      tags: [orders]
+      summary: Create a guest order using current database prices and stock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCheckoutInput"
+      responses:
+        "201":
+          description: Order created and waiting for store confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderCheckoutConfirmation"
+        "400":
+          description: Invalid checkout details, mixed currencies, or unavailable product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Supabase checkout is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /raw-materials:
+    get:
+      operationId: listRawMaterials
+      tags: [raw-materials]
+      summary: List published materials priced per gram
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Published raw materials.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RawMaterial" }
+  /admin/raw-materials:
+    get:
+      operationId: listAdminRawMaterials
+      tags: [raw-materials]
+      summary: List all raw materials for administration
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: All raw materials.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RawMaterial" }
+    post:
+      operationId: addHillenRawMaterial
+      tags: [raw-materials]
+      summary: Import one verified Hillen99 product at its original price
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HillenMaterialInput" }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Imported or already existing material.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawMaterial" }
+  /admin/raw-materials/{id}:
+    patch:
+      operationId: updateRawMaterial
+      tags: [raw-materials]
+      summary: Edit a material without changing the recorded supplier price
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RawMaterialUpdate" }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Saved material.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawMaterial" }
+    delete:
+      operationId: deleteRawMaterial
+      tags: [raw-materials]
+      summary: Delete a raw material
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "204": { description: Deleted. }
+  /admin/raw-materials/imports:
+    get:
+      operationId: listRawMaterialImports
+      tags: [raw-materials]
+      summary: List previous dry-run and import jobs
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Recent resumable import history.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RawMaterialImport" }
+    post:
+      operationId: createRawMaterialImport
+      tags: [raw-materials]
+      summary: Start a dry-run or source import
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RawMaterialImportInput" }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "201":
+          description: Import job created and saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawMaterialImport" }
+  /admin/raw-materials/imports/{id}:
+    get:
+      operationId: getRawMaterialImport
+      tags: [raw-materials]
+      summary: Read saved import progress
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Saved job state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawMaterialImport" }
+  /admin/raw-materials/imports/{id}/step:
+    post:
+      operationId: stepRawMaterialImport
+      tags: [raw-materials]
+      summary: Process or resume the next saved import page
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Latest saved progress after one page.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawMaterialImport" }
+  /admin/raw-materials/categories:
+    get:
+      operationId: listHillenRawMaterialCategories
+      tags: [raw-materials]
+      summary: Discover every non-empty supplier category
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Live supplier categories and product counts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/HillenCategory" }
+  /admin/raw-materials/research:
+    post:
+      operationId: researchRawMaterials
+      tags: [raw-materials]
+      summary: Search Hillen99 and get a grounded AI material summary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RawMaterialQuery" }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Verified supplier matches and AI explanation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawMaterialResearch" }
+  /contact/settings:
+    get:
+      operationId: getPublicContactSettings
+      tags: [contact]
+      summary: Read published store hours
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Configured store hours, if set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactSettings" }
+  /contact/messages:
+    post:
+      operationId: submitContactMessage
+      tags: [contact]
+      summary: Save a customer message to the private store inbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactMessageInput" }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "201":
+          description: The message was saved successfully.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactMessageReceived" }
+  /admin/contact/settings:
+    get:
+      operationId: getAdminContactSettings
+      tags: [contact]
+      summary: Read admin-configurable contact settings
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Current contact settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactSettings" }
+    patch:
+      operationId: updateAdminContactSettings
+      tags: [contact]
+      summary: Update store hours
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactSettingsUpdate" }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Updated contact settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactSettings" }
+  /admin/contact/messages:
+    get:
+      operationId: listAdminContactMessages
+      tags: [contact]
+      summary: List messages in the admin-only inbox
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Most recent contact messages.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ContactMessage" }
+  /admin/contact/messages/{id}:
+    patch:
+      operationId: updateAdminContactMessage
+      tags: [contact]
+      summary: Mark a contact message as read or unread
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactMessageUpdate" }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "200":
+          description: Updated message state.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactMessage" }
+    delete:
+      operationId: deleteAdminContactMessage
+      tags: [contact]
+      summary: Delete a contact message from the private inbox
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        default: { $ref: "#/components/responses/RawMaterialError" }
+        "204":
+          description: Message permanently deleted.
+components:
+  responses:
+    RawMaterialError:
+      description: Invalid input, sign-in required, missing material, rate limit, or supplier/AI service unavailable.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    RawMaterialCandidate:
+      type: object
+      required: [source_id, source_sku, name, description, source_description, category, source_category, price, currency, image_url, source_url, supplier_available, unit, quantity_options]
+      properties:
+        source_id: { type: integer }
+        source_sku: { type: [string, "null"] }
+        name: { type: string }
+        description: { type: string }
+        category: { type: string }
+        price: { type: number }
+        currency: { type: string, enum: [USD, IQD] }
+        image_url: { type: string }
+        source_url: { type: string }
+        supplier_available: { type: boolean }
+        source_description: { type: string }
+        source_category: { type: string }
+        unit: { type: string, enum: [g, item] }
+        quantity_options:
+          type: array
+          items:
+            type: object
+            required: [label, value]
+            properties:
+              label: { type: string }
+              value: { type: string }
+              price: { type: number }
+              currency: { type: string }
+              unit: { type: string }
+    RawMaterial:
+      allOf:
+        - { $ref: "#/components/schemas/RawMaterialCandidate" }
+        - type: object
+          required: [id, supabase_id, source_name, source_category, source_image_url, source_available, source_price, source_currency, published, imported_at]
+          properties:
+            id: { type: integer }
+            supabase_id: { type: [string, "null"], format: uuid }
+            source_name: { type: string }
+            source_category: { type: string }
+            source_image_url: { type: string }
+            source_available: { type: boolean }
+            source_price: { type: number }
+            source_currency: { type: string, enum: [USD, IQD] }
+            published: { type: boolean }
+            imported_at: { type: string, format: date-time }
+    HillenMaterialInput:
+      type: object
+      required: [source_id]
+      properties:
+        source_id: { type: integer, minimum: 1 }
+    RawMaterialUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 500 }
+        description: { type: string, maxLength: 3000 }
+        category: { type: string, minLength: 1, maxLength: 150 }
+        price: { type: number, minimum: 0, maximum: 99999999 }
+        currency: { type: string, enum: [USD, IQD] }
+        published: { type: boolean }
+    RawMaterialQuery:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string, minLength: 2, maxLength: 120 }
+    HillenCategory:
+      type: object
+      required: [id, name, slug, count]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        count: { type: integer }
+    RawMaterialImportInput:
+      type: object
+      required: [mode]
+      properties:
+        mode: { type: string, enum: [dry-run, import] }
+        category_id: { type: [integer, "null"], minimum: 1 }
+        category_name: { type: string, maxLength: 150 }
+        dry_run_id: { type: integer, minimum: 1 }
+    RawMaterialImportPageInput:
+      type: object
+      required: [page]
+      properties:
+        page: { type: integer, minimum: 1, maximum: 1000 }
+        category_id: { type: [integer, "null"], minimum: 1 }
+    RawMaterialImportError:
+      type: object
+      required: [page, url, message]
+      properties:
+        page: { type: integer }
+        url: { type: string }
+        message: { type: string }
+    RawMaterialImport:
+      type: object
+      required: [id, mode, status, category_id, category_name, next_page, total_pages, discovered, created, updated, skipped, processed, source_ids, categories, processed_pages, failed_pages, errors, created_at, updated_at, completed_at]
+      properties:
+        id: { type: integer }
+        mode: { type: string, enum: [dry-run, import] }
+        status: { type: string, enum: [running, complete, partial] }
+        category_id: { type: [integer, "null"] }
+        category_name: { type: string }
+        next_page: { type: integer }
+        total_pages: { type: integer }
+        discovered: { type: integer }
+        created: { type: integer }
+        updated: { type: integer }
+        skipped: { type: integer }
+        processed: { type: integer }
+        source_ids: { type: array, items: { type: integer } }
+        categories: { type: array, items: { type: string } }
+        processed_pages: { type: array, items: { type: integer } }
+        failed_pages: { type: array, items: { type: integer } }
+        errors: { type: array, items: { $ref: "#/components/schemas/RawMaterialImportError" } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+    RawMaterialResearch:
+      type: object
+      required: [answer, matches, warning]
+      properties:
+        answer: { type: string }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/RawMaterialCandidate" }
+        warning: { type: string }
+    ProductSizeVariant:
+      type: object
+      required: [supabase_id, bottle_size_ml, price, stock]
+      properties:
+        supabase_id:
+          type: [string, "null"]
+          format: uuid
+        bottle_size_ml:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 10000
+        price:
+          type: number
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+    ProductSizeInput:
+      type: object
+      required: [bottle_size_ml, price, stock]
+      properties:
+        bottle_size_ml:
+          type: integer
+          minimum: 1
+          maximum: 10000
+        price:
+          type: number
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+    Product:
+      type: object
+      required:
+        - id
+        - supabase_id
+        - title
+        - brand
+        - price
+        - currency
+        - bottle_size_ml
+        - stock
+        - sku
+        - category
+        - description
+        - top_notes
+        - heart_notes
+        - base_notes
+        - ingredients
+        - image_url
+        - gallery_images
+        - size_variants
+        - created_at
+      properties:
+        id:
+          type: integer
+        supabase_id:
+          type: [string, "null"]
+          format: uuid
+        title:
+          type: string
+        brand:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+          enum: [USD, IQD]
+        bottle_size_ml:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 10000
+        stock:
+          type: integer
+        sku:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        top_notes:
+          type: array
+          items:
+            type: string
+        heart_notes:
+          type: array
+          items:
+            type: string
+        base_notes:
+          type: array
+          items:
+            type: string
+        ingredients:
+          type: array
+          items:
+            type: string
+        image_url:
+          type: string
+        gallery_images:
+          type: array
+          items:
+            type: string
+        size_variants:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/ProductSizeVariant"
+        created_at:
+          type: string
+          format: date-time
+    ProductInput:
+      type: object
+      required:
+        - title
+        - brand
+        - category
+        - description
+        - top_notes
+        - heart_notes
+        - base_notes
+        - ingredients
+        - image_url
+        - gallery_images
+        - size_variants
+      properties:
+        title:
+          type: string
+          minLength: 1
+        brand:
+          type: string
+          minLength: 1
+        currency:
+          type: string
+          enum: [USD, IQD]
+          default: USD
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        top_notes:
+          type: array
+          items:
+            type: string
+        heart_notes:
+          type: array
+          items:
+            type: string
+        base_notes:
+          type: array
+          items:
+            type: string
+        ingredients:
+          type: array
+          items:
+            type: string
+        image_url:
+          type: string
+        gallery_images:
+          type: array
+          items:
+            type: string
+        size_variants:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/ProductSizeInput"
+    ProductUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        brand:
+          type: string
+          minLength: 1
+        currency:
+          type: string
+          enum: [USD, IQD]
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        top_notes:
+          type: array
+          items:
+            type: string
+        heart_notes:
+          type: array
+          items:
+            type: string
+        base_notes:
+          type: array
+          items:
+            type: string
+        ingredients:
+          type: array
+          items:
+            type: string
+        image_url:
+          type: string
+        gallery_images:
+          type: array
+          items:
+            type: string
+        size_variants:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/ProductSizeInput"
+    OrderCheckoutInput:
+      type: object
+      required: [customer_name, phone, shipping_address, city, payment_method, items]
+      properties:
+        customer_name: { type: string, minLength: 2, maxLength: 200 }
+        phone: { type: string, minLength: 7, maxLength: 40 }
+        email: { type: [string, "null"], format: email }
+        shipping_address: { type: string, minLength: 3, maxLength: 1000 }
+        city: { type: string, minLength: 2, maxLength: 150 }
+        notes: { type: string, maxLength: 2000, default: "" }
+        payment_method: { type: string, enum: [whatsapp] }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            required: [product_id, quantity]
+            properties:
+              product_id: { type: string, format: uuid }
+              quantity: { type: integer, minimum: 1, maximum: 10000 }
+    OrderCheckoutConfirmation:
+      type: object
+      required: [order_id, subtotal, shipping_fee, total, currency, order_status, payment_status, created_at, items]
+      properties:
+        order_id: { type: string, format: uuid }
+        subtotal: { type: number }
+        shipping_fee: { type: number }
+        total: { type: number }
+        currency: { type: string, enum: [USD, IQD] }
+        order_status: { type: string, enum: [pending_confirmation] }
+        payment_status: { type: string, enum: [pending] }
+        created_at: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            required: [product_name, unit_price, quantity, line_total]
+            properties:
+              product_name: { type: string }
+              unit_price: { type: number }
+              quantity: { type: integer }
+              line_total: { type: number }
+    AdminPasscodeInput:
+      type: object
+      required: [passcode]
+      properties:
+        passcode:
+          type: string
+          minLength: 1
+          maxLength: 256
+    AdminPasscodeStatus:
+      type: object
+      required: [unlocked]
+      properties:
+        unlocked:
+          type: boolean
+    AutofillFragranceInput:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 2
+          maxLength: 120
+    FragranceImage:
+      type: object
+      required: [title, image_url, thumbnail_url, source_url, source]
+      properties:
+        title:
+          type: string
+        image_url:
+          type: string
+        thumbnail_url:
+          type: string
+        source_url:
+          type: string
+        source:
+          type: string
+    FragranceSource:
+      type: object
+      required: [title, url]
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+    FragranceImageSearch:
+      type: object
+      required: [images]
+      properties:
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/FragranceImage"
+    FragranceSuggestion:
+      type: object
+      required:
+        - title
+        - brand
+        - price
+        - category
+        - description
+        - top_notes
+        - heart_notes
+        - base_notes
+        - ingredients
+        - image_url
+        - gallery_images
+      properties:
+        image_results:
+          type: array
+          items:
+            $ref: "#/components/schemas/FragranceImage"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/FragranceSource"
+        warnings:
+          type: array
+          items:
+            type: string
+        title:
+          type: string
+        brand:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+        description:
+          type: string
+        top_notes:
+          type: array
+          items:
+            type: string
+        heart_notes:
+          type: array
+          items:
+            type: string
+        base_notes:
+          type: array
+          items:
+            type: string
+        ingredients:
+          type: array
+          items:
+            type: string
+        image_url:
+          type: string
+        gallery_images:
+          type: array
+          items:
+            type: string
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 5242880
+        contentType:
+          type: string
+          minLength: 1
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        uploadToken:
+          type: string
+        bucket:
+          type: string
+        publicUrl:
+          type: string
+          format: uri
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    ContactSettings:
+      type: object
+      required: [store_hours, updated_at]
+      properties:
+        store_hours:
+          type: [string, "null"]
+        updated_at:
+          type: [string, "null"]
+          format: date-time
+    ContactSettingsUpdate:
+      type: object
+      required: [store_hours]
+      properties:
+        store_hours:
+          type: [string, "null"]
+          maxLength: 1000
+    ContactMessageInput:
+      type: object
+      required: [full_name, email, subject, message]
+      properties:
+        full_name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email, minLength: 3, maxLength: 254 }
+        phone: { type: [string, "null"], maxLength: 32, pattern: "^[+0-9() .-]{0,32}$" }
+        subject:
+          type: string
+          enum: [product, order, feedback, store_info, other]
+        message: { type: string, minLength: 10, maxLength: 2000 }
+    ContactMessageReceived:
+      type: object
+      required: [id, received]
+      properties:
+        id: { type: integer }
+        received: { type: boolean, enum: [true] }
+    ContactMessage:
+      type: object
+      required: [id, full_name, email, phone, subject, message, is_read, created_at]
+      properties:
+        id: { type: integer }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: [string, "null"] }
+        subject: { type: string, enum: [product, order, feedback, store_info, other] }
+        message: { type: string }
+        is_read: { type: boolean }
+        created_at: { type: string, format: date-time }
+    ContactMessageUpdate:
+      type: object
+      required: [is_read]
+      properties:
+        is_read: { type: boolean }
+
